@@ -69,7 +69,7 @@ bool do_exec(int count, ...)
         do {
             res = waitpid(cpid, &wstatus, 0);
         } while (res < 0 && errno == EINTR);
-        return res > 0 && wstatus == 0;
+        return res > 0 && WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0;
     }
 
     return true;
@@ -119,7 +119,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
         do {
             res = waitpid(cpid, &wstatus, 0);
         } while (res < 0 && errno == EINTR);
-        return res > 0 && wstatus == 0;
+        return res > 0 && WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0;
     }
 
     return true;
