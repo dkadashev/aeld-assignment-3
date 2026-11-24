@@ -159,15 +159,11 @@ handle_client_conn(int clientfd, int datafd)
 }
 
 int
-run_server_forever()
+run_server_forever(int sockfd)
 {
     struct sockaddr client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
-    int sockfd = make_listener();
     int datafd;
-    if (sockfd < 0) {
-        return 1;
-    }
     if (unlink(STORE_PATH) && errno != ENOENT) {
         syslog(
           LOG_WARNING, "Failed to unlink %s: %s", STORE_PATH, strerror(errno));
@@ -220,9 +216,42 @@ setup_sighandlers()
 }
 
 int
+do_daemonize()
+{
+    pid_t child_pid = fork();
+    if (child_pid < 0) {
+        syslog(LOG_ERR, "Failed to fork: %s", strerror(errno));
+        return 1;
+    } else if (child_pid == 0) {
+        setsid();
+        chdir("/");
+        // We might want to do a second fork here to be extra careful, but for
+        // this task a single fork is enough
+        return 0;
+    }
+    return 1;
+}
+
+int
 main(int argc, char* argv[])
 {
+    int sockfd = -1;
+    int daemonize = 0;
     openlog(argv[0], LOG_PERROR | LOG_PID, LOG_USER);
     setup_sighandlers();
-    return run_server_forever();
+    for (int i = 1; i < argc; ++i) {
+        if (!strncmp(argv[i], "-d", 2)) {
+            daemonize = 1;
+        }
+    }
+
+    sockfd = make_listener();
+    if (sockfd < 0) {
+        return 1;
+    }
+
+    if (daemonize && do_daemonize()) {
+        return 0;
+    }
+    return run_server_forever(sockfd);
 }
