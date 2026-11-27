@@ -49,7 +49,7 @@ make_listener()
         syslog(LOG_ERR, "bind() failed: %s", strerror(errno));
         goto err;
     }
-    if (listen(sockfd, 0)) {
+    if (listen(sockfd, 128)) {
         syslog(LOG_ERR, "listen() failed: %s", strerror(errno));
         goto err;
     }
