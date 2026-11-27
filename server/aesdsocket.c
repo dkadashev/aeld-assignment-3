@@ -15,9 +15,7 @@
 
 #include <stdio.h>
 
-const char* ADDR = "127.0.0.1";
-const char* PORT = "9000";
-const int AF = AF_INET;
+int PORT = 9000;
 const int SOCK_TYPE = SOCK_STREAM;
 
 const char* STORE_PATH = "/var/tmp/aesdsocketdata";
@@ -36,23 +34,17 @@ int
 make_listener()
 {
     int res;
-    struct addrinfo* addr = NULL;
-    struct addrinfo hints;
-    int sockfd = socket(AF, SOCK_TYPE, 0);
+    struct sockaddr_in addr;
+    int sockfd = socket(AF_INET, SOCK_TYPE, 0);
     if (sockfd < 0) {
         syslog(LOG_ERR, "Failed to create a socket: %s", strerror(errno));
         return sockfd;
     }
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF;
-    hints.ai_socktype = SOCK_TYPE;
-    res = getaddrinfo(ADDR, PORT, &hints, &addr);
-    if (res) {
-        syslog(LOG_ERR, "getaddrinfo() failed: %s", gai_strerror(res));
-        goto err;
-    }
-    res = bind(sockfd, addr->ai_addr, addr->ai_addrlen);
-    freeaddrinfo(addr);
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(PORT);
+    addr.sin_addr.s_addr = INADDR_ANY;
+    res = bind(sockfd, (struct sockaddr*) &addr, sizeof(addr));
     if (res) {
         syslog(LOG_ERR, "bind() failed: %s", strerror(errno));
         goto err;
@@ -174,7 +166,7 @@ run_server_forever(int sockfd)
         close(sockfd);
         return 1;
     }
-    syslog(LOG_DEBUG, "Listening on port %s", PORT);
+    syslog(LOG_DEBUG, "Listening on port %d", PORT);
     memset(&client_addr, 0, sizeof(client_addr));
     while (!SIGNALED) {
         int client_fd = accept(sockfd, &client_addr, &client_addr_len);
@@ -186,7 +178,7 @@ run_server_forever(int sockfd)
         struct sockaddr_in* addr = (struct sockaddr_in*)&client_addr;
         char buf[INET_ADDRSTRLEN];
         const char* addr_s = buf;
-        if (inet_ntop(AF, &addr->sin_addr, buf, sizeof(buf)) == NULL) {
+        if (inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)) == NULL) {
             addr_s = "<unknown>";
         }
         syslog(LOG_DEBUG, "Accepted connection from %s", addr_s);
